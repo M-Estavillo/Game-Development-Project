@@ -1,0 +1,12 @@
+# Godot's generated imports, caches, and editor state.
+.godot/
+# Generated Android build files.
+/android/
+# Exported builds, kept out of source control.
+/export/
+/exports/
+/build/
+# Local export credentials.
+export_credentials.cfg
+# macOS Finder metadata.
+.DS_Store

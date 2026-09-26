@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3]
+[ext_resource type="Script" path="res://scripts/pebble.gd" id="1"]
+[sub_resource type="CircleShape2D" id="Shape"]
+radius = 12.0
+[node name="Pebble" type="Area2D"]
+collision_layer = 0
+collision_mask = 2
+script = ExtResource("1")
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, 0)
+shape = SubResource("Shape")
