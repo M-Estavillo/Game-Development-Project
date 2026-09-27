@@ -22,6 +22,8 @@ var knockback_time := 0.0
 
 @onready var attack_area: Area2D = $AttackArea
 @onready var dust: CPUParticles2D = $LandingDust
+@onready var visuals: Node2D = $Visuals
+@onready var animation: AnimationPlayer = $AnimationPlayer
 
 func _physics_process(delta: float) -> void:
 	if dead:
@@ -33,7 +35,7 @@ func _physics_process(delta: float) -> void:
 	var direction := Input.get_axis("move_left", "move_right")
 	if knockback_time <= 0.0:
 		velocity.x = direction * SPEED
-	if direction != 0.0 and attack_time <= 0.0:
+	if direction != 0.0 and not (animation.current_animation == "attack" and animation.is_playing()):
 		facing = signf(direction)
 	attack_area.position.x = facing * 25.0
 	if not is_on_floor():
@@ -47,15 +49,27 @@ func _physics_process(delta: float) -> void:
 			if target.has_method("take_damage") and not target in hit_targets:
 				hit_targets.append(target)
 				target.take_damage(1)
+	var impact_speed := velocity.y
 	var was_grounded := is_on_floor()
 	move_and_slide()
 	if is_on_floor() and not was_grounded:
+		dust.initial_velocity_max = clampf(impact_speed * 0.18, 45.0, 95.0)
 		dust.restart()
 		dust.emitting = true
 		landed.emit()
 	if position.y > 650.0:
 		die()
+	_update_animation()
 	queue_redraw()
+
+func _update_animation() -> void:
+	visuals.scale.x = facing
+	visuals.modulate = Color("ed9f9f") if invincibility > 0.0 and int(invincibility * 16.0) % 2 == 0 else Color.WHITE
+	if animation.current_animation == "attack" and animation.is_playing():
+		return
+	var next := "air" if not is_on_floor() else ("walk" if absf(velocity.x) > 1.0 else "idle")
+	if animation.current_animation != next:
+		animation.play(next)
 
 func begin_attack() -> void:
 	if cooldown > 0.0 or dead:
@@ -63,6 +77,7 @@ func begin_attack() -> void:
 	cooldown = ATTACK_COOLDOWN
 	attack_time = ATTACK_DURATION
 	hit_targets.clear()
+	animation.play("attack")
 
 func take_damage(amount: int, source_x: float = 0.0) -> void:
 	if invincibility > 0.0 or dead:
@@ -82,33 +97,8 @@ func die() -> void:
 	get_tree().call_deferred("reload_current_scene")
 
 func _draw() -> void:
-	var ink := Color("192434")
-	var pale := Color("e0e8df")
-	if invincibility > 0.0 and int(invincibility * 16.0) % 2 == 0:
-		pale = Color("e89a9a")
-	# Original geometric placeholder: cape, body, oversized rounded helmet.
-	draw_colored_polygon(PackedVector2Array([Vector2(-10, -15), Vector2(-facing * 21, 13), Vector2(10, 10)]), Color("586982"))
-	draw_rect(Rect2(-9, -12, 18, 25), ink)
-	draw_line(Vector2(-6, 10), Vector2(-7, 18), pale, 4.0)
-	draw_line(Vector2(6, 10), Vector2(7, 18), pale, 4.0)
-	draw_style_box(_helmet_style(pale), Rect2(-15, -33, 30, 26))
-	draw_line(Vector2(-10, -21), Vector2(10, -21), ink, 4.0)
-	draw_line(Vector2(facing * 4, -24), Vector2(facing * 4, -14), ink, 3.0)
-	var tip := Vector2(facing * 39, -11) if attack_time > 0.0 else Vector2(facing * 18, 13)
-	draw_line(Vector2(facing * 10, -3), tip, Color("ba9467"), 5.0)
-	if attack_time > 0.0:
-		draw_arc(Vector2(facing * 12, -6), 30, -0.8 if facing > 0 else 2.34, 0.8 if facing > 0 else 3.94, 12, Color("d6e5ce"), 2.0)
 	# Temporary world-space health markers; the gameplay HUD belongs to a later milestone.
 	for i in MAX_HEALTH:
 		var center := Vector2(-11 + i * 11, -46)
 		var heart := PackedVector2Array([center + Vector2(-4, -1), center + Vector2(-2, -3), center, center + Vector2(2, -3), center + Vector2(4, -1), center + Vector2(4, 1), center + Vector2(0, 5), center + Vector2(-4, 1)])
 		draw_colored_polygon(heart, Color("dca4a4") if i < health else Color("394354"))
-
-func _helmet_style(color: Color) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = color
-	style.corner_radius_top_left = 10
-	style.corner_radius_top_right = 10
-	style.corner_radius_bottom_left = 4
-	style.corner_radius_bottom_right = 4
-	return style

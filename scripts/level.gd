@@ -16,6 +16,7 @@ const EXIT = preload("res://scenes/objects/exit.tscn")
 func _ready() -> void:
 	stage_width = 2240 if level_number == 1 else 2560
 	RenderingServer.set_default_clear_color(Color("142330") if level_number == 1 else Color("091321"))
+	_build_background()
 	terrain = $Terrain
 	var player = PLAYER.instantiate()
 	player.name = "Player"
@@ -81,6 +82,8 @@ func _add_sign(at: Vector2, text: String, size: int) -> Label:
 	label.position = at
 	label.text = text
 	label.add_theme_font_size_override("font_size", size)
+	label.add_theme_color_override("font_outline_color", Color(0.025, 0.04, 0.07, 0.95))
+	label.add_theme_constant_override("outline_size", 4)
 	label.modulate = Color("c9e1e7")
 	add_child(label)
 	return label
@@ -105,7 +108,7 @@ func _reach_exit() -> void:
 	else:
 		GameManager.completed = true
 		_add_sign(exit_gate.position + Vector2(-580, -190), "At last! I've conquered the depths of the forgotten kingdom!", 18)
-		_add_sign(exit_gate.position + Vector2(-580, -150), "Week 3 complete · Pebbles: %s / 6 · R: play again" % GameManager.collected.size(), 18)
+		_add_sign(exit_gate.position + Vector2(-580, -150), "Adventure complete · Pebbles: %s / 6 · R: play again" % GameManager.collected.size(), 18)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("restart"):
@@ -114,10 +117,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif not transitioning:
 			get_tree().reload_current_scene()
 
-func _draw() -> void:
-	# Simple placeholder cave silhouettes; no generated artwork or animations yet.
-	for x in range(0, stage_width, 160):
-		draw_rect(Rect2(x + 25, 205, 45, 355), Color("1c3040") if level_number == 1 else Color("122237"))
-		if level_number == 1 and terrain.get_cell_source_id(Vector2i(int((x + 75) / 32), 15)) != -1:
-			draw_line(Vector2(x + 75, 472), Vector2(x + 75, 456), Color("467582"), 3)
-			draw_arc(Vector2(x + 75, 457), 9, PI, TAU, 10, Color("76bac5"), 4)
+func _build_background() -> void:
+	var parallax := Parallax2D.new()
+	parallax.name = "CaveBackground"
+	parallax.scroll_scale = Vector2(0.12, 0.05)
+	parallax.z_index = -100
+	var backdrop := Sprite2D.new()
+	backdrop.name = "Artwork"
+	backdrop.texture = preload("res://assets/backgrounds/shallows.png") if level_number == 1 else preload("res://assets/backgrounds/slightly-deeper.png")
+	backdrop.centered = false
+	# Overscan covers both cameras' full travel without stretching across the whole level.
+	backdrop.scale = Vector2(1280, 720) / backdrop.texture.get_size()
+	backdrop.modulate = Color(0.65, 0.7, 0.78, 1)
+	parallax.add_child(backdrop)
+	add_child(parallax)
